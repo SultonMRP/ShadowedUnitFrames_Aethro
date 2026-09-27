@@ -15,6 +15,10 @@ local function IsAethroParagonLoaded()
 	return IsAddOnLoaded("AethroParagon")
 end
 
+local function IsPlayerUnit(unit)
+	return unit and UnitExists(unit) and UnitIsPlayer(unit)
+end
+
 local function CacheLevel(unit, level)
 	level = tonumber(level)
 	if( not level or level <= 0 or not unit ) then
@@ -38,7 +42,7 @@ local function ReadPortrait(unit)
 		if( ParagonCharacterLevel and ParagonCharacterLevel.Text ) then
 			return CacheLevel("player", ParagonCharacterLevel.Text:GetText())
 		end
-	elseif( UnitIsUnit(unit, "target") and ParagonTargetLevel and ParagonTargetLevel.Text ) then
+	elseif( UnitIsUnit(unit, "target") and IsPlayerUnit("target") and ParagonTargetLevel and ParagonTargetLevel.Text ) then
 		if( ParagonTargetLevel.lastTargetGUID == UnitGUID(unit) and ParagonTargetLevel:GetAlpha() > 0 ) then
 			return CacheLevel("target", ParagonTargetLevel.Text:GetText())
 		end
@@ -46,15 +50,26 @@ local function ReadPortrait(unit)
 end
 
 function Paragon:GetLevel(unit)
-	if( not IsAethroParagonLoaded() or not unit or not UnitExists(unit) or not UnitIsPlayer(unit) ) then
+	if( not IsAethroParagonLoaded() or not IsPlayerUnit(unit) ) then
 		return
 	end
 
 	return cache[UnitGUID(unit) or ""] or cache[UnitName(unit) or ""] or ReadPortrait(unit)
 end
 
+function Paragon:GetLevelText(unit, wrap)
+	local level = self:GetLevel(unit)
+	if( not level ) then
+		return
+	end
+	if( wrap ) then
+		return "(" .. tostring(level) .. ")"
+	end
+	return tostring(level)
+end
+
 function Paragon:RequestIfNeeded(unit)
-	if( not IsAethroParagonLoaded() or not unit or not UnitIsPlayer(unit) or not SendClientRequest ) then
+	if( not IsAethroParagonLoaded() or not IsPlayerUnit(unit) or not SendClientRequest ) then
 		return
 	end
 	if( self:GetLevel(unit) ) then
@@ -130,7 +145,9 @@ function Paragon:EnsureHooks()
 
 	if( not hookedTarget and UIParagon_OnReceiveTargetLevel ) then
 		hooksecurefunc("UIParagon_OnReceiveTargetLevel", function(_, arg_table)
-			CacheLevel("target", arg_table and arg_table[1])
+			if( IsPlayerUnit("target") ) then
+				CacheLevel("target", arg_table and arg_table[1])
+			end
 			Paragon:UpdateTaggedFrames()
 		end)
 		hookedTarget = true
@@ -152,16 +169,26 @@ function Paragon:RegisterTag()
 		local Paragon = ShadowUF.Paragon
 		if( not Paragon ) then return nil end
 		Paragon:RequestIfNeeded(unitOwner)
-		local level = Paragon:GetLevel(unitOwner)
-		return level and tostring(level) or nil
+		return Paragon:GetLevelText(unitOwner)
+	end]]
+	Tags.defaultTags["paragon()"] = [[function(unit, unitOwner)
+		local Paragon = ShadowUF.Paragon
+		if( not Paragon ) then return nil end
+		Paragon:RequestIfNeeded(unitOwner)
+		return Paragon:GetLevelText(unitOwner, true)
 	end]]
 	Tags.defaultEvents["paragon"] = "PARAGON PLAYER_TARGET_CHANGED"
+	Tags.defaultEvents["paragon()"] = "PARAGON PLAYER_TARGET_CHANGED"
 	Tags.defaultCategories["paragon"] = "classification"
-	Tags.defaultHelp["paragon"] = L["Shows the units Aethro Paragon level if it is known. Yourself and the current target are requested from the server. Other players only show a number if you have targeted them before."]
+	Tags.defaultCategories["paragon()"] = "classification"
+	Tags.defaultHelp["paragon"] = L["Shows the units Aethro Paragon level if it is known. Only shown for players, not NPCs or mobs. Yourself and the current target are requested from the server. Other players only show a number if you have targeted them before."]
+	Tags.defaultHelp["paragon()"] = L["Same as [paragon], but wraps the number in parentheses, for example (12). Only shown for players."]
 	Tags.defaultNames["paragon"] = L["Paragon"]
+	Tags.defaultNames["paragon()"] = L["Paragon (parentheses)"]
 
 	if( ShadowUF.tagFunc ) then
 		ShadowUF.tagFunc["paragon"] = nil
+		ShadowUF.tagFunc["paragon()"] = nil
 	end
 
 	tagRegistered = true

@@ -4,4 +4,4 @@ WotLK 3.3.5a Shadowed Unit Frames with a `[paragon]` tag for Aethro Private Serv
 
 Requires **AethroParagon**. If that addon is missing or disabled, the tag is not shown.
 
-Add `[paragon]` in `/suf` → unit → **Text/Tags**.
+Add `[paragon]` (number) or `[paragon()]` (`(12)`) in `/suf` → unit → **Text/Tags**. Players only.

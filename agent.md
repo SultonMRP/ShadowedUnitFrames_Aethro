@@ -19,11 +19,13 @@ Related tooltip work (same paragon protocol): `TipTac\agent.md`.
 
 Original package had **no** paragon number and **no** item level. User asked for **paragon only**. Item level was not added.
 
-### 1. `[paragon]` tag
+### 1. `[paragon]` / `[paragon()]` tags
 
 Lives in **`modules\paragon.lua`**, not `tags.lua`. Tag tables are injected at runtime only if AethroParagon is loaded.
 
-- Returns the **number only**. No prefix, color, space, or parentheses. User wraps it with normal SUF tag syntax.
+- `[paragon]` returns the **number only**.
+- `[paragon()]` returns the number in parentheses, e.g. `(12)`. Registered as its own tag name so SUF looks it up before treating `()` as an empty suffix.
+- Only shown for **players** (`UnitIsPlayer`). NPCs, mobs, and pets stay blank. Hook 6 replies are ignored unless the current target is a player.
 - Category: **Classifications** (next to `[level]`).
 - Events: custom `PARAGON` + `PLAYER_TARGET_CHANGED`.
 - Uses `unitOwner` so vehicle swap still reads the player.
@@ -63,19 +65,16 @@ Not in this folder. Done in the same session so both addons behave alike:
 
 ## How to show it
 
-`/suf` → unit (player, target, …) → **Text/Tags** → enable **Paragon** or type `[paragon]`.
-
-Examples (SUF prefix/suffix syntax, not built into the tag):
+`/suf` → unit (player, target, …) → **Text/Tags** → enable **Paragon** / **Paragon (parentheses)**, or type the tag.
 
 ```
 [paragon]                    → 12
+[paragon()]                  → (12)
 [( )paragon]                 →  12
-[( )level][paragon] [perpp]  →  8012 50%
-[level][paragon( )][perpp]   → 80 12 50%
-[( )level][(()paragon())]    →  80(12)
+[level][paragon()] [perpp]   → 80(12) 50%
 ```
 
-`[( )paragon]` is “space then number if known.” That space is the `( )`, not the tag function. Checking the box in the wizard always appends `[( )tag]`.
+`[( )paragon]` is still “space then number” via SUF prefix syntax. Use `[paragon()]` when you want built-in parentheses.
 
 ---
 
@@ -146,7 +145,8 @@ Tag pickers walk `ShadowUF.Tags.defaultTags`. A built-in tag appears automatical
 - Ace3 is already here (AceDB + Options AceConfig). Do not add a new SavedVariables table for paragon.
 - Do **not** `RegisterModule` paragon as a visible unit widget. It is tag-only (`ShadowUF.Paragon` + `Tags.customEvents["PARAGON"]`). A named module would show up in zone/visibility toggles.
 - Tag function must stay `(unit, unitOwner)` and return a string or `nil`.
-- Keep `[paragon]` a bare number. Wrappers are the user's text string.
+- Keep `[paragon]` a bare number. `[paragon()]` is the paren variant. Other wrappers stay the user's text string.
+- Never show or cache a paragon number unless `UnitIsPlayer` is true. Do not write hook 6 onto the current target if that target is an NPC.
 - Register tag tables only from `paragon.lua` after `IsAddOnLoaded("AethroParagon")`. Putting them in `tags.lua` makes the option appear without the addon.
 - If adding another Aethro server number as a tag, hook the existing receive function and cache by GUID. Do not invent a unit-targeted request unless the server grows a new hook.
 - Do not add player item level unless asked. That is inspect + `INSPECT_TALENT_READY` (see TipTacTalents). One inspect at a time globally; do not inspect every raid frame.
